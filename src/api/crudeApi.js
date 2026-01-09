@@ -2,7 +2,7 @@ import axios from "axios";
 
 
 const API = axios.create({
-baseURL: "https://crude-mern-backend.vercel.app",
+baseURL: "https://crude-mern-backend.vercel.app/api/users",
 });
 
 
