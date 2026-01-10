@@ -4,61 +4,84 @@ import Table from './components/Table';
 import SearchedTable from './components/SearchedTable';
 import UserForm from './components/Form';
 import Button from './components/Button';
-import {createUser,getUsers,deleteUser,updateUser,getUserById} from './api/crudeApi';
-const App =()=> {
+import { createUser, getUsers, deleteUser, updateUser, getUserById } from './api/crudeApi';
+
+const App = () => {
   const [users, setUsers] = useState([]);
-  const [filteredUsers,setFilteredUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
   const [formData, setFormData] = useState({ name: '', email: '', role: '' });
   const [editIndex, setEditIndex] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [searchedTable,setSearchedTable] = useState(false);
+  const [searchedTable, setSearchedTable] = useState(false);
+
   const handleSearch = (query) => {
-  const trimmedQuery = query.trim().toLowerCase();
+    const trimmedQuery = query.trim().toLowerCase();
 
-  if (!trimmedQuery) {
-    setFilteredUsers([]); // or show all users: setFilteredUsers(users)
-    return;
-  }
+    if (!trimmedQuery) {
+      setFilteredUsers([]); // or show all users: setFilteredUsers(users)
+      return;
+    }
 
-  const filtered = users.filter((user) =>
-    Object.values(user).some(
-      (value) =>
-        value &&
-        value.toString().toLowerCase().includes(trimmedQuery)
-    )
-  );
+    const filtered = users.filter((user) =>
+      Object.values(user).some(
+        (value) =>
+          value &&
+          value.toString().toLowerCase().includes(trimmedQuery)
+      )
+    );
 
-  setFilteredUsers(filtered);
-};
-
+    setFilteredUsers(filtered);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if(editIndex !== null) {
-      const updatedUser = await updateUser(editIndex, formData);
-      if(updateUser.status === 200){
-        fetchUsers();
+    try {
+      if (editIndex !== null) {
+        const res = await updateUser(editIndex, formData);
+        if (res && (res.status === 200 || res.status === 204)) {
+          await fetchUsers();
+        }
+        setEditIndex(null);
+      } else {
+        const res = await createUser(formData);
+        if (res && (res.status === 201 || res.status === 200)) {
+          await fetchUsers();
+        }
       }
-      setEditIndex(null);
-    } else {
-      const msg = await createUser(formData);
+    } catch (err) {
+      console.error('Error submitting form:', err);
+    } finally {
+      setFormData({ name: '', email: '', role: '' });
+      setShowForm(false);
     }
-    setFormData({ name: '', email: '', role: '' });
-    setShowForm(false);
   };
 
   const handleEdit = async (uid) => {
-    const updatedUser = await getUserById(uid);
-    setFormData(updatedUser.data);
-    setEditIndex(uid);
-    setShowForm(true);
+    try {
+      const res = await getUserById(uid);
+      // Support response shapes like res.data or res.data.data
+      const userData = res?.data?.data ?? res?.data ?? {};
+      setFormData({
+        name: userData.name || '',
+        email: userData.email || '',
+        role: userData.role || ''
+      });
+      setEditIndex(uid);
+      setShowForm(true);
+    } catch (err) {
+      console.error('Error fetching user by id:', err);
+    }
   };
 
   const handleDelete = async (delId) => {
-    const delRes = await deleteUser(delId);
-    console.log(delRes);
-    if(delRes.status === 200){
-      fetchUsers();
+    try {
+      const delRes = await deleteUser(delId);
+      console.log(delRes);
+      if (delRes && (delRes.status === 200 || delRes.status === 204)) {
+        await fetchUsers();
+      }
+    } catch (err) {
+      console.error('Error deleting user:', err);
     }
   };
 
@@ -67,36 +90,35 @@ const App =()=> {
     setEditIndex(null);
     setShowForm(false);
   };
-  
+
   const fetchUsers = async () => {
     try {
       const response = await getUsers();
-      console.log(response);
-      // setUsers(response.data);
+      console.log('getUsers response:', response);
+      // Support response shapes like response.data (array) or response.data.data (object with data)
+      const usersData = response?.data?.data ?? response?.data ?? [];
+      setUsers(Array.isArray(usersData) ? usersData : []);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error('Error fetching users:', error);
     }
   };
 
+  // Fetch once on mount
   useEffect(() => {
     fetchUsers();
-  },[]);
-  useEffect(() => {
-    fetchUsers();
-  },[users]);
-  
+  }, []);
+
   useEffect(() => {
     console.log(filteredUsers);
-  },[filteredUsers]);
-  
+  }, [filteredUsers]);
 
   return (
     <div className="min-h-screen bg-gray-100">
       <Header onSearch={handleSearch} onFocus={setSearchedTable} />
-      
+
       <div className="container mx-auto p-6">
         <div className="mb-6">
-          <Button onClick={() => setShowForm(!showForm)} btnType='button' variant="success">
+          <Button onClick={() => setShowForm(!showForm)} btnType="button" variant="success">
             {showForm ? 'Hide Form' : 'Add User'}
           </Button>
         </div>
@@ -115,7 +137,7 @@ const App =()=> {
 
         <Table
           data={searchedTable ? filteredUsers : users}
-          toggleCaption = {searchedTable}
+          toggleCaption={searchedTable}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
@@ -128,5 +150,6 @@ const App =()=> {
       </div>
     </div>
   );
-}
+};
+
 export default App;
