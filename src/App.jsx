@@ -71,7 +71,8 @@ const App =()=> {
   const fetchUsers = async () => {
     try {
       const response = await getUsers();
-      setUsers(response.data);
+      console.log(response);
+      // setUsers(response.data);
     } catch (error) {
       console.error("Error fetching users:", error);
     }
@@ -79,7 +80,7 @@ const App =()=> {
 
   useEffect(() => {
     fetchUsers();
-  });
+  },[]);
   useEffect(() => {
     fetchUsers();
   },[users]);
